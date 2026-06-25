@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The HPO Score Model</title>
+    
+    <link rel="icon" href="HPO Score Model.jpg" type="image/jpeg">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        window.firebaseModules = {
+            initializeApp, getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged,
+            getFirestore, collection, addDoc, serverTimestamp, getDocs, query, orderBy, limit
+        };
+    </script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .tab-content { display: none; animation: fadeIn 0.4s ease-in-out; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .radio-scale input[type="radio"] { display: none; }
+        .radio-scale label {
+            display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 40px; height: 40px; border-radius: 50%; border: 2px solid #cbd5e1;
+            cursor: pointer; transition: all 0.2s; font-weight: 600; color: #475569;
+        }
+        .radio-scale input[type="radio"]:checked + label {
+            background-color: #4f46e5; border-color: #4f46e5; color: white; transform: scale(1.1); box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3);
+        }
+        .radio-scale label:hover { border-color: #4f46e5; background-color: #e0e7ff; }
+        
+        #pdf-document { background: white; color: #0f172a; }
+        .dimension-bar { transition: width 1s ease-out; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased pt-24 pb-12">
+
+    <!-- Notification Toast -->
+    <div id="toast-container" class="fixed top-24 right-4 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+    <header class="fixed top-0 left-0 right-0 bg-indigo-900 text-white shadow-lg z-50">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col md:flex-row justify-between items-center">
+            <div class="flex items-center space-x-4">
+                <img src="HPO Score Model.jpg" alt="HPO Score Model" class="h-14 w-auto object-contain rounded bg-white p-1 shadow-sm" onerror="this.src='https://placehold.co/150x60/ffffff/4f46e5?text=HPO+Model'">
+                <div>
+                    <h1 class="text-2xl font-bold tracking-tight">The HPO Score Model</h1>
+                    <p class="text-indigo-200 text-xs mt-1 font-medium tracking-wide uppercase">Developed by Iman N Bajuasijadji</p>
+                </div>
+            </div>
+            <nav class="flex space-x-1 mt-3 md:mt-0 bg-indigo-800 p-1 rounded-lg">
+                <button onclick="switchTab('penjelasan')" id="btn-penjelasan" class="flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors bg-white text-indigo-900 shadow-sm">
+                    <i class="ph ph-book-open text-lg mr-2"></i> Konsep
+                </button>
+                <button onclick="switchTab('kuesioner')" id="btn-kuesioner" class="flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors text-white hover:bg-indigo-700">
+                    <i class="ph ph-clipboard-text text-lg mr-2"></i> Instrumen
+                </button>
+                <button onclick="switchTab('hasil')" id="btn-hasil" class="flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors text-white hover:bg-indigo-700">
+                    <i class="ph ph-chart-bar text-lg mr-2"></i> Hasil
+                </button>
+            </nav>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4">
+        
+        <div id="tab-penjelasan" class="tab-content active bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+            <h2 class="text-3xl font-bold text-slate-900 mb-6 border-b pb-4">Tinjauan Akademis: High Performing Organization (HPO)</h2>
+            
+            <div class="prose prose-slate max-w-none text-justify leading-relaxed">
+                <p class="text-lg text-slate-600 mb-6">
+                    Berdasarkan literatur fundamental <strong>"Leading at a Higher Level"</strong> karya Ken Blanchard dkk., penciptaan <em>High Performing Organization</em> (HPO) bertumpu pada filosofi bahwa keberhasilan organisasional bukan semata-mata soal kalkulasi profitabilitas jangka pendek, melainkan pada penciptaan hasil kinerja luar biasa secara berkelanjutan yang berbanding lurus dengan kepuasan tertinggi elemen manusia di dalamnya.
+                </p>
+
+                <h3 class="text-xl font-bold mt-8 mb-3 text-indigo-800">1. Target Utama: Optimalisasi The Triple Bottom Line</h3>
+                <p class="mb-4">
+                    Organisasi berkinerja tinggi merekonstruksi paradigma tujuannya dengan menitikberatkan pada tiga pilar utama. Laba <em>(profit)</em> hanyalah "tepuk tangan" apresiatif yang Anda dapatkan karena merawat pelanggan dan memberdayakan pekerja Anda dengan sangat baik:
+                </p>
+                <ul class="list-disc pl-6 mb-6 space-y-3 text-slate-700">
+                    <li><strong>Provider of Choice (Penyedia Pilihan):</strong> Pelanggan memegang kendali. HPO tidak sekadar memuaskan pelanggan, melainkan menciptakan <em>Raving Fans</em>—pelanggan militan yang sangat antusias dengan pelayanan Anda sehingga mereka secara sukarela menceritakannya ke orang lain dan bertindak sebagai "pasukan penjualan" tak resmi organisasi Anda.</li>
+                    <li><strong>Employer of Choice (Pemberi Kerja Pilihan):</strong> Gaji yang baik bukan lagi satu-satunya jawaban. Organisasi HPO mengkreasi lingkungan kerja dimana karyawan merasa kontribusinya dihargai, diberdayakan, dan dilibatkan. Karyawan bukanlah komoditas, melainkan mitra bisnis strategis. Jika karyawan dirawat dengan baik, mereka akan meneruskan sikap tersebut kepada pelanggan.</li>
+                    <li><strong>Investment of Choice (Investasi Pilihan):</strong> Menjadi instrumen bisnis yang tangguh. Melalui kebijakan <em>open-book management</em> (transparansi finansial internal), karyawan memahami bagaimana institusi mencetak dan mengelola uang, sehingga mereka terdorong untuk berpartisipasi menekan biaya operasional dan menaikkan pendapatan.</li>
+                </ul>
+
+                <h3 class="text-xl font-bold mt-8 mb-3 text-indigo-800">2. Konstruksi Kerangka Kerja SCORES</h3>
+                <p class="mb-4">
+                    Efektivitas HPO direalisasikan melalui internalisasi 6 dimensi karakteristik yang beroperasi secara interdependen, diformulasikan dalam akronim <strong>SCORES</strong>:
+                </p>
+                
+                <div class="grid md:grid-cols-2 gap-6 mt-6">
+                    <div class="bg-indigo-50/50 p-6 rounded-xl border border-indigo-100 hover:shadow-md transition">
+                        <h4 class="font-bold text-indigo-900 mb-2 flex items-center"><i class="ph-fill ph-share-network mr-2 text-xl text-indigo-600"></i> S - Shared Information</h4>
+                        <p class="text-sm">Demokratisasi informasi di seluruh organisasi. Akses informasi terbuka mengeliminasi kecurigaan hierarkis, mengkatalisasi kepercayaan (trust), dan memampukan setiap karyawan untuk membuat keputusan bisnis layaknya seorang <em>owner</em>.</p>
+                    </div>
+                    <div class="bg-indigo-50/50 p-6 rounded-xl border border-indigo-100 hover:shadow-md transition">
+                        <h4 class="font-bold text-indigo-900 mb-2 flex items-center"><i class="ph-fill ph-target mr-2 text-xl text-indigo-600"></i> C - Compelling Vision</h4>
+                        <p class="text-sm">Visi yang sangat memikat. Di dalamnya terkapsulasi arah/tujuan luhur (purpose), arsitektur masa depan yang gamblang (picture of the future), serta tata nilai pemandu (values) yang mengarahkan energi kolektif organisasi ke target yang presisi.</p>
+                    </div>
+                    <div class="bg-indigo-50/50 p-6 rounded-xl border border-indigo-100 hover:shadow-md transition">
+                        <h4 class="font-bold text-indigo-900 mb-2 flex items-center"><i class="ph-fill ph-books mr-2 text-xl text-indigo-600"></i> O - Ongoing Learning</h4>
+                        <p class="text-sm">Komitmen konstan pada perbaikan kapabilitas. Organisasi belajar secara proaktif, mengumpulkan modal pengetahuan (knowledge capital), dan mentransfer pembelajaran baru secara cepat untuk merespons tuntutan kompetisi dan perubahan disrupsi.</p>
+                    </div>
+                    <div class="bg-indigo-50/50 p-6 rounded-xl border border-indigo-100 hover:shadow-md transition">
+                        <h4 class="font-bold text-indigo-900 mb-2 flex items-center"><i class="ph-fill ph-users-three mr-2 text-xl text-indigo-600"></i> R - Relentless Focus on Customer Results</h4>
+                        <p class="text-sm">Fokus yang hampir obsesif pada sudut pandang pelanggan. Standar kualitas dijaga ketat dan alur operasional diarsiteki khusus agar pelanggan sangat dimudahkan ketika berbisnis dengan organisasi Anda tanpa friksi berarti.</p>
+                    </div>
+                    <div class="bg-indigo-50/50 p-6 rounded-xl border border-indigo-100 hover:shadow-md transition">
+                        <h4 class="font-bold text-indigo-900 mb-2 flex items-center"><i class="ph-fill ph-gears mr-2 text-xl text-indigo-600"></i> E - Energizing Systems and Structures</h4>
+                        <p class="text-sm">Infrastruktur dan sistem disejajarkan agar <em>memudahkan</em>, bukan mempersulit. Sistem birokrasi tidak boleh menjadi restriksi kaku, melainkan bertindak sebagai pendorong laju respons organisasi dalam mengeksekusi visi.</p>
+                    </div>
+                    <div class="bg-indigo-50/50 p-6 rounded-xl border border-indigo-100 hover:shadow-md transition">
+                        <h4 class="font-bold text-indigo-900 mb-2 flex items-center"><i class="ph-fill ph-handshake mr-2 text-xl text-indigo-600"></i> S - Shared Power & High Involvement</h4>
+                        <p class="text-sm">Desentralisasi pengambil keputusan ke tingkatan front-line. Kolaborasi menggantikan piramida hierarki kaku. Organisasi mendistribusikan otoritas agar setiap entitas berpartisipasi dan merasa terikat kuat pada tujuan bersama.</p>
+                    </div>
+                </div>
+
+                <h3 class="text-xl font-bold mt-8 mb-3 text-indigo-800">3. Determinasi Kepemimpinan: The Servant Leadership Engine</h3>
+                <p class="mb-4">
+                    Jika SCORES berfungsi sebagai destinasi arsitektur (What), maka kepemimpinan adalah mesin penggeraknya (How). HPO mensyaratkan paradigma <strong>Servant Leadership (Kepemimpinan yang Melayani)</strong>. Ken Blanchard merumuskan 2 pilar fundamental dalam pendekatan ini:
+                </p>
+                <ul class="list-decimal pl-6 mb-6 space-y-3 text-slate-700">
+                    <li><strong>Strategic Role (Peran Visioner):</strong> Kepemimpinan menetapkan ke mana arah organisasi. Arahan dan tata nilai ditentukan oleh pucuk kepemimpinan; ini adalah aspek *Leadership*.</li>
+                    <li><strong>Operational Role (Peran Eksekusi/Pelayanan):</strong> Begitu visi ditegakkan, piramida hierarki harus "dibalik" 180 derajat. Kini, pemimpin berada di bawah melayani bawahan. Aspek *Servant* ini menuntut pemimpin mengeliminasi birokrasi dan memberdayakan ujung tombak agar karyawan bisa terbang bebas memecahkan masalah pelanggan layaknya <em>Elang (Eagles)</em>, alih-alih terjebak kebijakan kaku dan merengek mengelak tanggung jawab layaknya <em>Bebek (Ducks)</em> di kolam rutinitas.</li>
+                </ul>
+
+                <h3 class="text-xl font-bold mt-8 mb-3 text-indigo-800">4. Kategori Diagnostik Assessment</h3>
+                <p class="mb-4">Instrumen pemetaan HPO ini menilai organisasi dalam skala komputasi maksimal 98 poin. Keluaran diagnosis terbagi atas:</p>
+                <div class="bg-slate-50 border border-slate-200 rounded-xl overflow-hidden mb-6">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider">
+                            <tr><th class="px-5 py-3">Rentang Skor</th><th class="px-5 py-3">Kategori</th><th class="px-5 py-3">Interpretasi Eksekutif</th></tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-200">
+                            <tr><td class="px-5 py-3 font-bold text-green-700 whitespace-nowrap">84 - 98</td><td class="px-5 py-3 font-bold text-slate-800">High Performing Organization</td><td class="px-5 py-3 text-slate-600">Model kepemimpinan melayani dan ke-6 pilar SCORES terinternalisasi sempurna. Organisasi sangat tangkas dan unggul.</td></tr>
+                            <tr><td class="px-5 py-3 font-bold text-amber-600 whitespace-nowrap">63 - 83</td><td class="px-5 py-3 font-bold text-slate-800">Developing Organization</td><td class="px-5 py-3 text-slate-600">Berada di tahap rata-rata/transisi. Terdapat inisiatif HPO yang positif, namun ada sumbatan sistemik pada dimensi tertentu.</td></tr>
+                            <tr><td class="px-5 py-3 font-bold text-red-600 whitespace-nowrap">&lt; 63</td><td class="px-5 py-3 font-bold text-slate-800">Opportunity for Improvement</td><td class="px-5 py-3 text-slate-600">Organisasi beroperasi konvensional (command-and-control). Butuh intervensi restrukturisasi budaya (change management) masif.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-kuesioner" class="tab-content bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+            <div class="border-b pb-4 mb-6">
+                <h2 class="text-3xl font-bold text-slate-900">Instrumen Diagnostik HPO</h2>
+                <p class="text-slate-500 mt-2">Kuesioner Pemetaan Berdasarkan 6 Dimensi SCORES & Kepemimpinan</p>
+            </div>
+
+            <div class="bg-amber-50 border-l-4 border-amber-500 p-5 mb-8 rounded-r-lg shadow-sm">
+                <h3 class="font-bold text-amber-900 mb-1 flex items-center"><i class="ph-fill ph-info mr-2"></i> Petunjuk Pengisian</h3>
+                <p class="text-sm text-amber-800 leading-relaxed mb-3">
+                    Berikan penilaian komprehensif terhadap 14 indikator pernyataan berikut dengan merefleksikan kondisi faktual institusi Anda. Klik salah satu angka pada skala 1-7 yang paling representatif.
+                </p>
+                <div class="flex flex-wrap gap-2 text-xs font-bold text-amber-900 bg-amber-100/70 p-3 rounded-md border border-amber-200 justify-between">
+                    <span>1 = Sangat Tidak Setuju</span>
+                    <span class="hidden md:inline">|</span>
+                    <span>2 = Tidak Setuju</span>
+                    <span class="hidden md:inline">|</span>
+                    <span>3 = Sedikit Tidak Setuju</span>
+                    <span class="hidden md:inline">|</span>
+                    <span>4 = Netral</span>
+                    <span class="hidden md:inline">|</span>
+                    <span>5 = Sedikit Setuju</span>
+                    <span class="hidden md:inline">|</span>
+                    <span>6 = Setuju</span>
+                    <span class="hidden md:inline">|</span>
+                    <span>7 = Sangat Setuju</span>
+                </div>
+            </div>
+
+            <!-- Form Data Responden -->
+            <div class="bg-slate-50 p-6 rounded-xl border border-slate-200 mb-8 shadow-inner">
+                <h3 class="font-bold text-slate-800 mb-4 flex items-center border-b border-slate-200 pb-3"><i class="ph-fill ph-identification-card text-indigo-600 mr-2 text-xl"></i> Profil Asesi / Responden</h3>
+                <div class="grid md:grid-cols-2 gap-5">
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Nama Lengkap</label>
+                        <input type="text" id="resp-nama" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm" placeholder="Masukkan nama lengkap">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Unit Kerja / Instansi</label>
+                        <input type="text" id="resp-instansi" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm" placeholder="Masukkan entitas organisasi">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-semibold text-slate-700 mb-1">Tanggal Asesmen</label>
+                        <input type="date" id="resp-tanggal" class="w-full md:w-1/2 px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all shadow-sm">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kontainer Pertanyaan Kuesioner (Generate via JS) -->
+            <div id="questions-container" class="space-y-4 mb-8"></div>
+
+            <!-- Tombol Aksi Kuesioner -->
+            <div class="mt-8 pt-6 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                <button onclick="loadMockData()" class="flex items-center px-4 py-2.5 bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200 rounded-lg font-semibold transition-colors text-sm w-full md:w-auto justify-center">
+                    <i class="ph-fill ph-magic-wand text-lg mr-2 text-indigo-600"></i> Muat 3 Contoh Asesi
+                </button>
+                
+                <div class="flex flex-col md:flex-row space-y-3 md:space-y-0 md:space-x-3 w-full md:w-auto">
+                    <button onclick="clearForm()" class="flex items-center justify-center px-6 py-2.5 border border-red-200 text-red-600 bg-red-50 hover:bg-red-100 rounded-lg font-bold transition-colors">
+                        <i class="ph-fill ph-trash text-lg mr-2"></i> Kosongkan
+                    </button>
+                    <button onclick="saveRespondentData()" class="flex items-center justify-center px-6 py-2.5 bg-indigo-600 text-white hover:bg-indigo-700 rounded-lg font-bold transition-all shadow-md hover:shadow-lg">
+                        <i class="ph-fill ph-floppy-disk text-lg mr-2"></i> Proses & Simpan Skoring
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tabel Hasil Skoring Sementara (Halaman 2) -->
+            <div class="mt-12">
+                <h3 class="font-bold text-slate-800 text-xl mb-4 border-l-4 border-indigo-600 pl-3">Repositori Data Asesi Tersimpan</h3>
+                <div class="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-100 text-slate-600 text-sm uppercase tracking-wider">
+                                <th class="p-4 font-semibold border-b border-slate-200 w-16">No</th>
+                                <th class="p-4 font-semibold border-b border-slate-200">Nama Asesi</th>
+                                <th class="p-4 font-semibold border-b border-slate-200">Instansi</th>
+                                <th class="p-4 font-semibold border-b border-slate-200 text-center">Skor Total</th>
+                                <th class="p-4 font-semibold border-b border-slate-200">Kategori Diagnosis</th>
+                                <th class="p-4 font-semibold border-b border-slate-200 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assessments-table-body" class="bg-white divide-y divide-slate-100 text-sm">
+                            <tr>
+                                <td colspan="6" class="p-6 text-center text-slate-400 font-medium">Belum ada data asesi yang tersimpan.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-hasil" class="tab-content">
+            
+            <!-- Password Gate -->
+            <div id="password-gate" class="max-w-md mx-auto bg-white p-10 rounded-2xl shadow-xl border border-slate-200 mt-12 text-center relative overflow-hidden">
+                <div class="absolute top-0 left-0 right-0 h-2 bg-indigo-600"></div>
+                <div class="mx-auto w-20 h-20 bg-indigo-50 rounded-full flex items-center justify-center mb-5 border-4 border-white shadow-sm">
+                    <i class="ph-fill ph-lock-key text-4xl text-indigo-600"></i>
+                </div>
+                <h2 class="text-2xl font-black text-slate-800 mb-2">Akses Terotorisasi</h2>
+                <p class="text-slate-500 text-sm mb-8 px-4">Modul pelaporan HPO SCORES mensyaratkan kredensial administrator. Masukkan kata sandi akses.</p>
+                
+                <input type="password" id="input-password" placeholder="••••••••" class="w-full px-4 py-3.5 border-2 border-slate-200 focus:border-indigo-500 focus:ring-0 rounded-xl text-center mb-3 tracking-widest font-mono text-lg transition-colors">
+                <p id="password-error" class="hidden text-red-500 text-xs text-center mb-4 font-bold bg-red-50 py-2 rounded"><i class="ph-fill ph-warning-circle mr-1"></i> Autentikasi gagal. Kredensial tidak valid.</p>
+                <button onclick="unlockDashboard()" class="w-full bg-slate-900 text-white font-bold py-3.5 rounded-xl hover:bg-indigo-700 transition-colors shadow-md flex justify-center items-center">
+                    Verifikasi Akses <i class="ph-bold ph-arrow-right ml-2"></i>
+                </button>
+            </div>
+
+            <!-- Dashboard Hasil Analisis -->
+            <div id="dashboard-content" class="hidden space-y-6">
+                
+                <!-- Dashboard Header & Controls -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div class="flex items-center w-full md:w-auto">
+                        <div class="p-3 bg-indigo-100 rounded-lg mr-4 text-indigo-700"><i class="ph-fill ph-chart-line-up text-2xl"></i></div>
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-800">Modul Analitik SCORES</h2>
+                            <p class="text-sm text-slate-500">Pilih mode tampilan analisis komprehensif.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row items-center space-y-3 md:space-y-0 md:space-x-4 w-full md:w-auto">
+                        <select id="analysis-selector" onchange="updateDashboardView()" class="w-full md:w-64 px-4 py-2.5 bg-slate-50 border border-slate-300 text-slate-800 text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 font-semibold shadow-sm cursor-pointer outline-none">
+                            <option value="aggregate">Analisis Agregat (Keseluruhan)</option>
+                            <!-- Options for individuals will be injected here -->
+                        </select>
+                        <button onclick="previewPDF()" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition shadow-md font-bold text-sm">
+                            <i class="ph-fill ph-eye text-lg mr-2"></i> Preview Laporan
+                        </button>
+                        <button onclick="generatePDF()" class="w-full md:w-auto flex items-center justify-center px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-md font-bold text-sm">
+                            <i class="ph-fill ph-printer text-lg mr-2"></i> Cetak / Unduh
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Empty State (If no data) -->
+                <div id="empty-state" class="bg-white p-16 text-center rounded-xl shadow-sm border border-slate-200">
+                    <i class="ph-fill ph-folder-dashed text-6xl text-slate-300 mx-auto mb-4"></i>
+                    <h3 class="text-xl font-bold text-slate-600">Repositori Kosong</h3>
+                    <p class="text-slate-500 mt-2">Belum ada komputasi data. Silakan lengkapi instrumen pada modul Kuesioner.</p>
+                </div>
+
+                <!-- PDF RENDER AREA / REPORT CONTAINER -->
+                <div id="pdf-container" class="hidden bg-white shadow-xl overflow-hidden flex justify-center border border-slate-300 rounded-lg p-2 md:p-6 bg-slate-200">
+                    <div id="pdf-document" class="w-full max-w-[210mm] min-h-[297mm] bg-white p-8 md:p-12 mx-auto text-slate-900 relative shadow-sm">
+                        
+                        <!-- Watermark -->
+                        <div class="absolute inset-0 flex items-center justify-center opacity-[0.02] pointer-events-none z-0">
+                            <i class="ph-fill ph-chart-polar text-[30rem]"></i>
+                        </div>
+
+                        <!-- Header Dokumen -->
+                        <div class="border-b-4 border-indigo-900 pb-5 mb-8 flex flex-col md:flex-row justify-between items-start md:items-end relative z-10 gap-4">
+                            <div class="flex items-center gap-4">
+                                <img src="HPO Score Model.jpg" alt="HPO Model" class="h-16 w-auto object-contain rounded bg-white p-1 shadow-sm" onerror="this.style.display='none'">
+                                <div>
+                                    <h1 class="text-3xl font-black text-indigo-900 tracking-tight uppercase">Laporan Diagnostik</h1>
+                                    <h2 class="text-lg text-slate-600 font-medium mt-1 uppercase tracking-widest">High Performing Organization Model</h2>
+                                </div>
+                            </div>
+                            <div class="text-left md:text-right text-sm text-slate-500">
+                                <p class="font-bold text-white bg-indigo-600 uppercase text-[10px] tracking-widest px-2.5 py-1 rounded inline-block mb-1 shadow-sm" id="pdf-mode-badge">Mode Agregat</p>
+                                <p class="font-bold text-slate-700 font-mono text-xs" id="pdf-ref-id">Ref: HPO-INB-2026</p>
+                            </div>
+                        </div>
+
+                        <!-- Identitas -->
+                        <div class="bg-slate-50 p-6 rounded-xl mb-8 border border-slate-200 relative z-10 shadow-inner">
+                            <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-200 pb-2 flex items-center"><i class="ph-fill ph-identification-card text-lg mr-2"></i> I. Meta Data Analisis</h3>
+                            <div class="grid grid-cols-2 gap-x-8 gap-y-4">
+                                <div class="col-span-2 md:col-span-1"><span class="text-slate-500 text-[10px] uppercase tracking-wider block mb-1 font-bold">Subjek Evaluasi:</span> <p class="font-bold text-lg text-indigo-900 leading-tight" id="pdf-nama">-</p></div>
+                                <div class="col-span-2 md:col-span-1"><span class="text-slate-500 text-[10px] uppercase tracking-wider block mb-1 font-bold">Tanggal Generate:</span> <p class="font-bold text-slate-700 leading-tight" id="pdf-tanggal">-</p></div>
+                                <div class="col-span-2"><span class="text-slate-500 text-[10px] uppercase tracking-wider block mb-1 font-bold">Entitas / Afiliasi / Sampel:</span> <p class="font-bold text-slate-700 leading-tight" id="pdf-instansi">-</p></div>
+                            </div>
+                        </div>
+
+                        <!-- Grid untuk Skor Keseluruhan & Dimensi -->
+                        <div class="grid md:grid-cols-5 gap-8 mb-8 relative z-10">
+                            
+                            <!-- Lingkaran Skor Total -->
+                            <div class="md:col-span-2 text-center flex flex-col justify-center items-center p-6 border border-slate-200 rounded-xl bg-white shadow-sm">
+                                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">II. Indeks Kinerja HPO</h3>
+                                
+                                <div class="inline-block relative">
+                                    <svg class="w-44 h-44 transform -rotate-90 drop-shadow-md">
+                                        <circle cx="88" cy="88" r="80" class="text-slate-100 stroke-current" stroke-width="12" fill="transparent"></circle>
+                                        <circle id="pdf-score-circle" cx="88" cy="88" r="80" class="text-indigo-600 stroke-current transition-all duration-1000 ease-out" stroke-width="12" fill="transparent" stroke-dasharray="502.65" stroke-dashoffset="502.65" stroke-linecap="round"></circle>
+                                    </svg>
+                                    <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+                                        <span class="text-5xl font-black text-slate-800 tracking-tighter" id="pdf-total-score">0</span>
+                                        <span class="block text-[10px] font-bold text-slate-400 border-t border-slate-200 mt-1 pt-1 uppercase tracking-widest" id="pdf-max-score">DARI 98</span>
+                                    </div>
+                                </div>
+
+                                <div class="mt-6 w-full">
+                                    <div id="pdf-category-badge" class="w-full flex flex-col items-center p-3 rounded-lg text-sm font-black uppercase tracking-wide bg-slate-100 text-slate-800 shadow-inner border border-slate-200 text-center">
+                                        <span class="text-[10px] text-slate-500 mb-1 leading-none">Kategori Diagnostik</span>
+                                        <span id="pdf-category-text" class="leading-tight text-indigo-700">-</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Rincian Dimensi SCORES -->
+                            <div class="md:col-span-3">
+                                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-200 pb-2"><i class="ph-fill ph-chart-bar text-lg align-text-bottom mr-1"></i> III. Peta Dimensi SCORES</h3>
+                                <div class="space-y-3.5" id="pdf-dimensions-container">
+                                    <!-- Diisi via JavaScript -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Analisis Kualitatif -->
+                        <div class="mb-6 relative z-10">
+                            <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 border-b border-slate-200 pb-2"><i class="ph-fill ph-text-align-left text-lg align-text-bottom mr-1"></i> IV. Interpretasi Eksekutif</h3>
+                            <p id="pdf-analysis-text" class="text-slate-700 text-sm leading-relaxed text-justify bg-indigo-50/50 p-6 rounded-xl border-l-4 border-indigo-600 font-medium shadow-sm">
+                                -
+                            </p>
+                        </div>
+
+                        <!-- Footer Dokumen -->
+                        <div class="mt-12 pt-6 border-t-2 border-slate-200 flex flex-col sm:flex-row justify-between items-center text-[10px] text-slate-400 font-bold uppercase tracking-widest relative z-10 gap-2">
+                            <p><i class="ph-fill ph-cpu mr-1"></i> Sistem Komputasi HPO SCORES</p>
+                            <p>Developed by Iman N Bajuasijadji &copy; 2026</p>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Pertanyaan HPO SCORES berdasarkan instrumen Ken Blanchard (14 indikator)
+        // Pemetaan: S(1,2), C(3,4), O(5,6), R(7,8), E(9,10), S(11,12), L-Servant Leadership(13,14)
+        const questions = [
+            { id: 'q1', dim: 'S1', title: 'Shared Information', text: 'Orang-orang memiliki akses mudah ke informasi yang mereka butuhkan untuk melakukan pekerjaan mereka dengan efektif.' },
+            { id: 'q2', dim: 'S1', title: 'Shared Information', text: 'Rencana dan keputusan dikomunikasikan sehingga dipahami dengan jelas.' },
+            { id: 'q3', dim: 'C', title: 'Compelling Vision', text: 'Kepemimpinan di organisasi Anda selaras dengan visi dan nilai-nilai bersama.' },
+            { id: 'q4', dim: 'C', title: 'Compelling Vision', text: 'Orang-orang di organisasi Anda memiliki semangat terhadap tujuan dan nilai-nilai bersama.' },
+            { id: 'q5', dim: 'O', title: 'Ongoing Learning', text: 'Orang-orang di organisasi Anda didukung secara aktif dalam pengembangan keterampilan dan kompetensi baru.' },
+            { id: 'q6', dim: 'O', title: 'Ongoing Learning', text: 'Organisasi Anda terus-menerus memasukkan pembelajaran baru ke dalam standar cara menjalankan bisnis.' },
+            { id: 'q7', dim: 'R', title: 'Relentless Focus on Customer', text: 'Setiap orang di organisasi Anda mempertahankan standar kualitas dan layanan tertinggi.' },
+            { id: 'q8', dim: 'R', title: 'Relentless Focus on Customer', text: 'Semua proses kerja dirancang untuk memudahkan pelanggan berbisnis dengan Anda.' },
+            { id: 'q9', dim: 'E', title: 'Energizing Systems & Structures', text: 'Sistem, struktur, serta praktik formal dan informal terintegrasi dan selaras.' },
+            { id: 'q10', dim: 'E', title: 'Energizing Systems & Structures', text: 'Sistem, struktur, serta praktik formal dan informal memudahkan orang-orang di organisasi Anda untuk menyelesaikan pekerjaannya.' },
+            { id: 'q11', dim: 'S2', title: 'Shared Power & Involvement', text: 'Orang-orang memiliki kesempatan untuk memengaruhi keputusan yang berdampak pada mereka.' },
+            { id: 'q12', dim: 'S2', title: 'Shared Power & Involvement', text: 'Tim digunakan sebagai kendaraan untuk menyelesaikan pekerjaan dan memengaruhi keputusan.' },
+            { id: 'q13', dim: 'L', title: 'Servant Leadership', text: 'Pemimpin berpikir bahwa memimpin adalah tentang melayani, bukan dilayani.' },
+            { id: 'q14', dim: 'L', title: 'Servant Leadership', text: 'Pemimpin menghilangkan hambatan untuk membantu orang-orang fokus pada pekerjaan dan pelanggan mereka.' }
+        ];
+
+        // Definisi meta-dimensi untuk UI laporan
+        const dimensionsDef = [
+            { code: 'S1', name: 'S - Shared Information', max: 14,
+              desc: { high: 'Transparansi data sangat istimewa. Organisasi mendemokratisasi informasi krusial (termasuk finansial) sehingga karyawan dapat bertindak tangkas layaknya pemilik bisnis (owner) tanpa sumbatan hierarki.', med: 'Distribusi informasi cukup baik namun masih bersifat parsial. Terkadang muncul opasitas data (silo) antar departemen yang memperlambat rantai keputusan di tingkat front-line.', low: 'Opasitas informasi mendominasi. Data dikontrol ketat secara elitis di puncak hierarki, memicu berkembangnya krisis kepercayaan dan minimnya inisiatif mandiri karyawan.' } },
+            { code: 'C', name: 'C - Compelling Vision', max: 14,
+              desc: { high: 'Visi organisasi dirumuskan amat memikat dan menjadi kompas navigasi operasional yang kohesif. Seluruh lini beroperasi dalam harmoni menuju tujuan hakiki dengan tata nilai yang konsisten.', med: 'Visi telah dideklarasikan, namun realita keseharian masih belum sepenuhnya merefleksikan nilai luhur tersebut. Sosialisasi berjalan baik namun inkonsisten dalam pelaksanaannya.', low: 'Krisis arah dan tujuan yang sistemik. Organisasi beroperasi secara sporadis dan reaktif tanpa landasan motivasi masa depan yang menyatukan komitmen emosional pekerja.' } },
+            { code: 'O', name: 'O - Ongoing Learning', max: 14,
+              desc: { high: 'Beroperasi sebagai entitas pembelajar tulen. Pelatihan kapabilitas SDM diinisiasi secara sistematis agar organisasi tangkas dalam mendisrupsi standar usangnya demi menyambut inovasi.', med: 'Inisiatif pembelajaran tersedia cukup baik, namun aplikasinya untuk mentransformasi standar bisnis terkadang tenggelam dan terhambat oleh hiruk-pikuk target operasional jangka pendek.', low: 'Terdapat stagnasi kompetensi institusi. Organisasi memandang pelatihan sebagai pemborosan sehingga rentan mengalami keusangan adaptasi di tengah disrupsi industri eksternal.' } },
+            { code: 'R', name: 'R - Focus on Customer', max: 14,
+              desc: { high: 'Orientasi obsesif untuk menghasilkan "Raving Fans". Seluruh sistem kerja direkayasa ulang secara mulus (friction-less) dari sudut pandang pelanggan demi kemudahan absolut bagi mereka.', med: 'Fokus pelanggan sudah terbentuk, tetapi belum mewujud dalam setiap sentuhan operasional. Kompromi kebijakan internal terkadang masih menomorduakan kemudahan pengguna jasa.', low: 'Organisasi ini beroperasi layaknya birokrasi restriktif yang memaksa pelanggan memahami prosedur kaku internal alih-alih merancang sistem yang berpusat pada kepuasan akhir nasabah.' } },
+            { code: 'E', name: 'E - Energizing Systems', max: 14,
+              desc: { high: 'Infrastruktur dan desain regulasi amat adaptif. Sistem secara aktif mensinergikan kerja dan memudahkan setiap karyawan mengakselerasi ide, mencerminkan kerangka organisasi yang amat lincah.', med: 'Meskipun sebagian prosedur memandu dengan baik, red-tape (birokrasi administratif berlebih) masih bertahan di simpul-simpul tertentu sehingga menghabiskan energi esensial staf.', low: 'Kebijakan organisasi sangat restriktif dan mematikan. Sistem dibuat murni untuk pengawasan berbasis kecurigaan, yang sangat mengekang daya agilitas dan mematikan inisiatif inovatif.' } },
+            { code: 'S2', name: 'S - Shared Power', max: 14,
+              desc: { high: 'Desentralisasi otoritas berjalan elegan dan inklusif. Pelibatan proaktif tingkat tinggi membuat karyawan dari seluruh lini memiliki kewenangan eksekusi dan rasa kepemilikan yang kuat.', med: 'Distribusi kuasa timbul-tenggelam. Pelibatan staf ada di batas wajar, namun pengambilan keputusan strategis masih terlalu tersentralisasi tanpa mempercayakan kolaborasi lintas-hierarki.', low: 'Model kepemimpinan didominasi gaya autokratik kolot. Partisipasi dan kerja sama tim sangat diabaikan, sedangkan distribusi kendali dan kekuasaan mutlak dimonopoli segelintir elit.' } },
+            { code: 'L', name: 'Servant Leadership', max: 14,
+              desc: { high: 'Prinsip kepemimpinan yang melayani berakar kokoh. Hierarki sengaja dibalik agar eksekutif menyingkirkan hambatan birokrasi dan melayani pekerja garis depan secara holistik.', med: 'Beberapa manajer telah mengadopsi gaya fasilitator, namun secara keseluruhan masih terjadi transisi, terutama ketika krisis dimana manajer kembali ke modus komando direktif.', low: 'Mental self-serving (minta dilayani) sangat akut di level pimpinan. Fokus manajerial diarahkan pada kontrol kekuasaan dan proteksi status ego, mengorbankan fungsi dukungan staf.' } }
+        ];
+
+        // State Aplikasi: Menyimpan multiple asesmen
+        let appState = {
+            answers: {},          // Jawaban form saat ini
+            assessments: [],      // Repositori seluruh data yang tersimpan
+            isUnlocked: false     // Status password gate
+        };
+
+        document.getElementById('resp-tanggal').value = new Date().toISOString().split('T')[0];
+
+        // Custom Toast UI
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgColor = type === 'error' ? 'bg-red-600' : (type === 'info' ? 'bg-blue-600' : 'bg-green-600');
+            const icon = type === 'error' ? 'ph-warning-circle' : (type === 'info' ? 'ph-info' : 'ph-check-circle');
+
+            toast.className = `${bgColor} text-white px-5 py-3.5 rounded-xl shadow-2xl font-bold flex items-center transform transition-all duration-300 translate-x-full opacity-0 max-w-sm ml-auto border border-white/20`;
+            toast.innerHTML = `<i class="ph-fill ${icon} text-2xl mr-3 shadow-sm rounded-full bg-white/20 p-1"></i> <span class="leading-tight">${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.remove('translate-x-full', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+
+        // ==========================
+        // FITUR PERSISTENSI (LOCAL STORAGE)
+        // ==========================
+        function saveStateToLocal() {
+            localStorage.setItem('hpo_assessments_data', JSON.stringify(appState.assessments));
+        }
+
+        function loadStateFromLocal() {
+            const savedData = localStorage.getItem('hpo_assessments_data');
+            if (savedData) {
+                try {
+                    appState.assessments = JSON.parse(savedData);
+                } catch (e) {
+                    console.error('Terjadi kesalahan saat memuat data lokal:', e);
+                }
+            }
+        }
+
+        // Generate UI Kuesioner
+        function initApp() {
+            const container = document.getElementById('questions-container');
+            questions.forEach((q, index) => {
+                let html = `
+                <div class="p-5 md:p-6 bg-white border border-slate-200 rounded-xl hover:shadow-md hover:border-indigo-200 transition-all duration-300">
+                    <p class="font-semibold text-slate-800 mb-5 leading-relaxed text-[15px]">
+                        <span class="inline-flex items-center justify-center w-8 h-8 bg-indigo-100 text-indigo-800 rounded-lg text-sm mr-3 font-bold border border-indigo-200 shadow-sm">${index + 1}</span>
+                        ${q.text}
+                    </p>
+                    <div class="flex flex-wrap gap-2 md:gap-4 items-center justify-between radio-scale bg-slate-50 p-2 md:p-3 rounded-lg border border-slate-100">
+                `;
+                
+                for(let i=1; i<=7; i++) {
+                    html += `
+                        <input type="radio" name="${q.id}" id="${q.id}-${i}" value="${i}" onchange="appState.answers['${q.id}'] = ${i}">
+                        <label for="${q.id}-${i}" class="text-sm shadow-sm" title="Skor ${i}">${i}</label>
+                    `;
+                }
+                html += `</div></div>`;
+                container.innerHTML += html;
+            });
+
+            // Memuat data asesi dari local storage ketika inisialisasi aplikasi
+            loadStateFromLocal();
+            renderAssessmentsTable();
+            updateAnalysisDropdown();
+
+            if(typeof initBackend === 'function') initBackend();
+        }
+
+        // Tab Switching Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+
+            ['penjelasan', 'kuesioner', 'hasil'].forEach(id => {
+                const btn = document.getElementById(`btn-${id}`);
+                btn.className = `flex items-center px-4 py-2 rounded-md text-sm font-medium transition-colors ${id === tabId ? 'bg-white text-indigo-900 shadow-sm' : 'text-white hover:bg-indigo-700'}`;
+            });
+
+            // Auto-refresh dashboard if entering 'hasil' and unlocked
+            if(tabId === 'hasil' && appState.isUnlocked && appState.assessments.length > 0) {
+                updateDashboardView();
+            }
+        }
+
+        function clearForm(showMsg = true) {
+            document.getElementById('resp-nama').value = '';
+            document.getElementById('resp-instansi').value = '';
+            document.getElementById('resp-tanggal').value = new Date().toISOString().split('T')[0];
+            appState.answers = {};
+            document.querySelectorAll('input[type="radio"]').forEach(r => r.checked = false);
+            if(showMsg) showToast('Formulir telah dikosongkan.', 'info');
+        }
+
+        function processAssessmentData(nama, instansi, tanggal, answersObj) {
+            let totalScore = 0;
+            let dimScores = { S1: 0, C: 0, O: 0, R: 0, E: 0, S2: 0, L: 0 };
+            
+            // Hitung total dan per dimensi
+            questions.forEach(q => {
+                const val = answersObj[q.id] || 0;
+                totalScore += val;
+                dimScores[q.dim] += val;
+            });
+
+            let category = '';
+            let analysis = '';
+            let badgeClass = '';
+            const maxScore = questions.length * 7; // 98
+
+            if (totalScore >= 84) {
+                category = 'High Performing Organization';
+                analysis = 'Diagnosis mengindikasikan bahwa institusi telah menginternalisasi postulat kepemimpinan tingkat tinggi dan kerangka kerja HPO secara komprehensif. Arsitektur komunikasi terbuka, visi strategis, serta fokus absolut pada hasil pelanggan beroperasi dalam harmoni dengan filosofi Triple Bottom Line. Lanjutkan trajektori positif ini untuk mempertahankan ekuilibrium kinerja tinggi.';
+                badgeClass = 'bg-green-100 text-green-800 border-green-200';
+            } else if (totalScore >= 63) {
+                category = 'Developing Organization';
+                analysis = 'Institusi berada pada fase transisi dan menunjukkan sinyalemen perkembangan positif, namun indikator kinerja belum optimal. Analisis mendalam diperlukan terhadap elemen-elemen SCORES yang berkinerja moderat. Upayakan eskalasi pemberdayaan staf dan eliminasi restriksi birokrasi struktural guna mengakselerasi proses kerja yang lebih lincah dan berpusat pada pelanggan.';
+                badgeClass = 'bg-amber-100 text-amber-800 border-amber-200';
+            } else {
+                category = 'Opportunity for Improvement';
+                analysis = 'Terdapat distorsi signifikan antara operasional aktual institusi dengan kerangka ideal HPO. Organisasi mendesak untuk melakukan restrukturisasi kultural. Rekomendasi difokuskan pada perumusan ulang visi organisasi yang memikat, implementasi prinsip Servant Leadership secara radikal, serta demokratisasi pengelolaan informasi guna merestorasi kepercayaan hierarkis.';
+                badgeClass = 'bg-red-100 text-red-800 border-red-200';
+            }
+
+            return { respondent: { nama, instansi, tanggal }, answers: answersObj, totalScore, maxScore, dimScores, category, analysis, badgeClass };
+        }
+
+        // Simpan 1 Asesi dari Form
+        function saveRespondentData() {
+            const nama = document.getElementById('resp-nama').value.trim();
+            const instansi = document.getElementById('resp-instansi').value.trim();
+            const tanggal = document.getElementById('resp-tanggal').value;
+
+            if (!nama || !instansi) return showToast('Validasi Gagal: Identitas responden wajib dilengkapi.', 'error');
+            if (Object.keys(appState.answers).length < questions.length) return showToast('Validasi Gagal: Seluruh 14 butir pernyataan kuesioner wajib dijawab.', 'error');
+
+            const result = processAssessmentData(nama, instansi, tanggal, {...appState.answers});
+            appState.assessments.push(result);
+            
+            // Backend call
+            if(typeof simpanKeDatabaseCloud === 'function') simpanKeDatabaseCloud(result);
+
+            // Memperbarui Local Storage
+            saveStateToLocal();
+
+            renderAssessmentsTable();
+            updateAnalysisDropdown();
+            clearForm(false);
+            
+            showToast('Data Asesi tersimpan di repositori. Buka Tab Hasil untuk analisis komprehensif.', 'success');
+        }
+
+        // ==========================
+        // FITUR HAPUS DATA (DELETE)
+        // ==========================
+        function deleteAssessment(index) {
+            // Menggunakan konfirmasi native browser demi keamanan dan pengalaman pengguna
+            if (confirm('Apakah Anda yakin ingin menghapus data asesi ini? Tindakan ini tidak dapat dibatalkan.')) {
+                appState.assessments.splice(index, 1);
+                
+                // Memperbarui Local Storage setelah penghapusan
+                saveStateToLocal();
+                
+                renderAssessmentsTable();
+                updateAnalysisDropdown();
+                showToast('Data Asesi berhasil dihapus dari repositori.', 'info');
+                
+                // Menyegarkan tampilan dasbor jika pengguna sedang berada di Tab Hasil
+                if (appState.isUnlocked) {
+                    updateDashboardView();
+                }
+            }
+        }
+
+        // Fitur MOCK DATA (Generate 3 Contoh Asesi)
+        function loadMockData() {
+            const mockData = [
+                { nama: "Dr. Budi Santoso", instansi: "Kementerian Strategis", tanggal: "2026-06-20", 
+                  ans: {q1:7, q2:7, q3:6, q4:7, q5:6, q6:7, q7:7, q8:6, q9:6, q10:7, q11:6, q12:7, q13:7, q14:7} }, // HPO (93)
+                { nama: "Ir. Siti Aminah", instansi: "Dinas Regional Jawa", tanggal: "2026-06-21", 
+                  ans: {q1:5, q2:4, q3:5, q4:5, q5:6, q6:4, q7:5, q8:4, q9:4, q10:5, q11:4, q12:5, q13:5, q14:4} }, // Developing (65)
+                { nama: "Andi Wijaya, S.E.", instansi: "Unit Operasional Cabang", tanggal: "2026-06-22", 
+                  ans: {q1:2, q2:3, q3:3, q4:2, q5:4, q6:3, q7:4, q8:2, q9:3, q10:2, q11:3, q12:2, q13:2, q14:3} }  // Needs Improv (38)
+            ];
+
+            mockData.forEach(m => {
+                const res = processAssessmentData(m.nama, m.instansi, m.tanggal, m.ans);
+                appState.assessments.push(res);
+                if(typeof simpanKeDatabaseCloud === 'function') simpanKeDatabaseCloud(res);
+            });
+
+            // Menyimpan entri data mock ke dalam Local Storage
+            saveStateToLocal();
+
+            renderAssessmentsTable();
+            updateAnalysisDropdown();
+            showToast('3 Data Asesi Contoh berhasil dimuat ke repositori.', 'success');
+        }
+
+        // Render Tabel Halaman 2
+        function renderAssessmentsTable() {
+            const tbody = document.getElementById('assessments-table-body');
+            if(appState.assessments.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400 font-medium">Belum ada data asesi yang tersimpan.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            appState.assessments.forEach((item, index) => {
+                html += `
+                <tr class="hover:bg-slate-50 transition-colors group">
+                    <td class="p-4 border-b border-slate-100 font-medium text-slate-500">${index + 1}</td>
+                    <td class="p-4 border-b border-slate-100 font-bold text-indigo-900 group-hover:text-indigo-600">${item.respondent.nama}</td>
+                    <td class="p-4 border-b border-slate-100 text-slate-600">${item.respondent.instansi}</td>
+                    <td class="p-4 border-b border-slate-100 text-center font-black text-slate-800">${item.totalScore}</td>
+                    <td class="p-4 border-b border-slate-100">
+                        <span class="px-3 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider ${item.badgeClass}">${item.category}</span>
+                    </td>
+                    <td class="p-4 border-b border-slate-100 text-center">
+                        <button onclick="deleteAssessment(${index})" class="text-red-500 hover:text-white hover:bg-red-500 p-1.5 rounded transition-colors" title="Hapus Data Asesi">
+                            <i class="ph-bold ph-trash text-lg"></i>
+                        </button>
+                    </td>
+                </tr>`;
+            });
+            tbody.innerHTML = html;
+        }
+
+        // Update Dropdown di Halaman 3
+        function updateAnalysisDropdown() {
+            const select = document.getElementById('analysis-selector');
+            select.innerHTML = `<option value="aggregate">Analisis Agregat (Keseluruhan ${appState.assessments.length} Asesi)</option>`;
+            appState.assessments.forEach((item, index) => {
+                select.innerHTML += `<option value="${index}">Individu: ${item.respondent.nama}</option>`;
+            });
+        }
+
+        function unlockDashboard() {
+            const pwd = document.getElementById('input-password').value;
+            const currentMonth = new Date().getMonth() + 1; // getMonth() returns 0-11, so we add 1
+            const formattedMonth = String(currentMonth).padStart(2, '0'); // ensures 2 digits format e.g. '07' for July
+            const expectedPwd = `HPO-${formattedMonth}`;
+
+            
+            if (pwd === expectedPwd) {
+                appState.isUnlocked = true;
+                document.getElementById('password-gate').classList.add('hidden');
+                document.getElementById('dashboard-content').classList.remove('hidden');
+                updateDashboardView();
+            } else {
+                document.getElementById('password-error').classList.remove('hidden');
+            }
+        }
+
+        // Render Bar Chart untuk Dimensi
+        function generateDimensionBarsHTML(dimScoresObject, isAverage = false) {
+            let html = '';
+            dimensionsDef.forEach(def => {
+                const score = dimScoresObject[def.code] || 0;
+                const percent = (score / def.max) * 100;
+                const colorClass = percent >= 85 ? 'bg-green-500' : (percent >= 60 ? 'bg-amber-500' : 'bg-red-500');
+                const displayScore = isAverage ? score.toFixed(1) : score;
+                
+                let analysisText = '';
+                if (percent >= 85) analysisText = def.desc.high;
+                else if (percent >= 60) analysisText = def.desc.med;
+                else analysisText = def.desc.low;
+                
+                html += `
+                <div class="mb-4 bg-slate-50 p-3 rounded-lg border border-slate-100 shadow-sm transition-all duration-300">
+                    <div class="flex justify-between items-center text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2">
+                        <span>${def.name}</span>
+                        <span class="text-slate-800 bg-white px-2 py-0.5 rounded border border-slate-200">${displayScore} / ${def.max}</span>
+                    </div>
+                    <div class="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden border border-slate-300 mb-2">
+                        <div class="${colorClass} h-2.5 rounded-full dimension-bar" style="width: ${percent}%"></div>
+                    </div>
+                    <p class="text-[10.5px] text-slate-600 font-medium leading-relaxed text-justify border-t border-slate-200 pt-1.5 mt-1.5 bg-slate-100/50 p-2 rounded">
+                        <span class="text-indigo-700 font-black tracking-wide uppercase"><i class="ph-bold ph-magnifying-glass"></i> Diagnostik:</span> ${analysisText}
+                    </p>
+                </div>`;
+            });
+            return html;
+        }
+
+        // Update View (Agregat vs Individu)
+        function updateDashboardView() {
+            if(!appState.isUnlocked) return;
+
+            if (appState.assessments.length === 0) {
+                document.getElementById('empty-state').classList.remove('hidden');
+                document.getElementById('pdf-container').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('empty-state').classList.add('hidden');
+            document.getElementById('pdf-container').classList.remove('hidden');
+
+            const selectorVal = document.getElementById('analysis-selector').value;
+            
+            if (selectorVal === 'aggregate') {
+                // KOMPUTASI AGREGAT
+                let sumTotal = 0;
+                let sumDims = { S1: 0, C: 0, O: 0, R: 0, E: 0, S2: 0, L: 0 };
+                const count = appState.assessments.length;
+
+                appState.assessments.forEach(item => {
+                    sumTotal += item.totalScore;
+                    Object.keys(sumDims).forEach(k => sumDims[k] += item.dimScores[k]);
+                });
+
+                const avgTotal = Math.round(sumTotal / count);
+                let avgDims = {};
+                Object.keys(sumDims).forEach(k => avgDims[k] = sumDims[k] / count);
+
+                // Re-calculate analysis based on Average Total
+                const dummyProcess = processAssessmentData("Agregat", "Multi-Instansi", "N/A", {}); 
+                // Override threshold with avgTotal
+                let avgCategory = ''; let avgAnalysis = ''; let avgBadge = '';
+                if (avgTotal >= 84) { avgCategory = 'High Performing Organization'; avgAnalysis = 'Analisis agregat menunjukkan profil kolektif yang sangat solid mencerminkan organisasi tingkat tinggi. Pertahankan budaya HPO dan terus perkuat Servant Leadership sebagai pondasi.'; avgBadge = 'bg-green-100 text-green-800 border-green-200'; } 
+                else if (avgTotal >= 63) { avgCategory = 'Developing Organization'; avgAnalysis = 'Secara kolektif, organisasi berada pada level rata-rata/transisi. Terdapat kesenjangan persepsi yang perlu diselaraskan. Fokuskan intervensi korporat pada dimensi dengan rata-rata terendah (lihat peta dimensi).'; avgBadge = 'bg-amber-100 text-amber-800 border-amber-200'; } 
+                else { avgCategory = 'Opportunity for Improvement'; avgAnalysis = 'Evaluasi kolektif mengindikasikan krisis sistemik pada budaya dan struktur operasional. Diperlukan intervensi manajemen perubahan (Change Management) secara masif dari pucuk pimpinan untuk merestorasi SCORES.'; avgBadge = 'bg-red-100 text-red-800 border-red-200'; }
+
+                // Update DOM for Aggregate
+                document.getElementById('pdf-mode-badge').innerText = `Agregat (${count} Asesi)`;
+                document.getElementById('pdf-mode-badge').className = "font-bold text-white bg-indigo-600 uppercase text-[10px] tracking-widest px-2.5 py-1 rounded inline-block mb-1 shadow-sm";
+                document.getElementById('pdf-nama').innerText = "Profil Organisasi Kolektif";
+                document.getElementById('pdf-instansi').innerText = `Populasi: ${count} Responden`;
+                document.getElementById('pdf-tanggal').innerText = new Date().toISOString().split('T')[0];
+                
+                document.getElementById('pdf-total-score').innerText = avgTotal;
+                updateDonutChart(avgTotal, 98);
+                
+                document.getElementById('pdf-category-text').innerText = avgCategory;
+                document.getElementById('pdf-category-badge').className = `w-full flex flex-col items-center p-3 rounded-lg text-sm font-black uppercase tracking-wide shadow-inner border text-center ${avgBadge}`;
+                document.getElementById('pdf-analysis-text').innerText = avgAnalysis;
+                document.getElementById('pdf-dimensions-container').innerHTML = generateDimensionBarsHTML(avgDims, true);
+
+            } else {
+                // KOMPUTASI INDIVIDU
+                const idx = parseInt(selectorVal);
+                const data = appState.assessments[idx];
+
+                // Update DOM for Individual
+                document.getElementById('pdf-mode-badge').innerText = "Laporan Individu";
+                document.getElementById('pdf-mode-badge').className = "font-bold text-white bg-slate-800 uppercase text-[10px] tracking-widest px-2.5 py-1 rounded inline-block mb-1 shadow-sm";
+                document.getElementById('pdf-nama').innerText = data.respondent.nama;
+                document.getElementById('pdf-instansi').innerText = data.respondent.instansi;
+                document.getElementById('pdf-tanggal').innerText = data.respondent.tanggal;
+                
+                document.getElementById('pdf-total-score').innerText = data.totalScore;
+                updateDonutChart(data.totalScore, data.maxScore);
+                
+                document.getElementById('pdf-category-text').innerText = data.category;
+                document.getElementById('pdf-category-badge').className = `w-full flex flex-col items-center p-3 rounded-lg text-sm font-black uppercase tracking-wide shadow-inner border text-center ${data.badgeClass}`;
+                document.getElementById('pdf-analysis-text').innerText = data.analysis;
+                document.getElementById('pdf-dimensions-container').innerHTML = generateDimensionBarsHTML(data.dimScores, false);
+            }
+        }
+
+        // Helper Animasi Lingkaran Skor
+        function updateDonutChart(score, maxScore) {
+            const circle = document.getElementById('pdf-score-circle');
+            const circumference = 80 * 2 * Math.PI; // ~502.65
+            const offset = circumference - ((score / maxScore) * circumference);
+            circle.style.strokeDashoffset = offset;
+            circle.className = `stroke-current transition-all duration-1000 ease-out ${score >= 84 ? 'text-green-500' : (score >= 63 ? 'text-amber-500' : 'text-red-500')}`;
+        }
+
+        function previewPDF() {
+            if (!window.html2pdf) return showToast('Modul PDF belum dimuat. Tunggu sebentar.', 'error');
+
+            const element = document.getElementById('pdf-document');
+            const opt = {
+                margin:       0.3,
+                filename:     `Preview_Laporan_HPO.pdf`,
+                image:        { type: 'jpeg', quality: 1 },
+                html2canvas:  { scale: 2.5, useCORS: true, logging: false },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            showToast('Menyiapkan dan membuka pratinjau PDF...', 'info');
+            
+            // Output to Blob URL for previewing in a new tab without downloading instantly
+            html2pdf().set(opt).from(element).toPdf().get('pdf').then(function (pdf) {
+                const blobURL = pdf.output('bloburl');
+                window.open(blobURL, '_blank');
+            }).catch(e => {
+                console.error(e);
+                showToast('Gagal merender Pratinjau PDF.', 'error');
+            });
+        }
+
+        function generatePDF() {
+            if (!window.html2pdf) return showToast('Modul PDF belum dimuat. Tunggu sebentar.', 'error');
+
+            const element = document.getElementById('pdf-document');
+            const mode = document.getElementById('analysis-selector').value;
+            const name = mode === 'aggregate' ? 'Agregat_Organisasi' : appState.assessments[parseInt(mode)].respondent.nama.replace(/[^a-zA-Z0-9]/g, '_');
+            
+            const opt = {
+                margin:       0.3,
+                filename:     `Laporan_HPO_${name}.pdf`,
+                image:        { type: 'jpeg', quality: 1 },
+                html2canvas:  { scale: 2.5, useCORS: true, logging: false },
+                jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+            };
+
+            showToast('Mengompilasi tata letak PDF... Mohon tunggu.', 'info');
+            
+            html2pdf().set(opt).from(element).save().then(() => {
+                showToast('Unduhan PDF Berhasil Diselesaikan.', 'success');
+            }).catch(e => {
+                console.error(e);
+                showToast('Gagal merender PDF.', 'error');
+            });
+        }
+
+        // Boot
+        window.onload = initApp;
+    </script>
+</body>
+</html>
